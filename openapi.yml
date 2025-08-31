@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: Meeting Transcriber API
+  version: "0.1.0"
+  description: |
+    API for audio upload/conversion, transcription (with optional speaker diarization), and meeting notes generation via Ollama.
+    
+    Base app defined in `backend/app/main.py`. Routers mounted under `/api/v1`.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+paths:
+  /:
+    get:
+      summary: Health check
+      operationId: getRoot
+      tags:
+        - system
+      responses:
+        '200':
+          description: Service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/upload-audio:
+    post:
+      summary: Upload and convert audio to standard WAV (async)
+      operationId: uploadAudio
+      tags:
+        - audio-processing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload accepted and processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioProcessingQueued'
+        '400':
+          description: Invalid file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error while saving/processing file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/audio-processing/{task_id}:
+    get:
+      summary: Get audio processing status
+      operationId: getAudioProcessingStatus
+      tags:
+        - audio-processing
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+          description: Audio processing task ID returned by upload step
+      responses:
+        '200':
+          description: Audio processing task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioProcessingStatus'
+        '404':
+          description: Processing task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/transcribe/{processing_task_id}:
+    post:
+      summary: Start transcription for a completed audio processing task
+      operationId: startTranscription
+      tags:
+        - transcription
+      parameters:
+        - in: path
+          name: processing_task_id
+          required: true
+          schema:
+            type: string
+          description: Processing task ID from the upload/convert step
+        - in: query
+          name: whisper_model
+          schema:
+            type: string
+          description: Override Whisper model (e.g., small.en, medium.en)
+        - in: query
+          name: compute_type
+          schema:
+            type: string
+            example: int8
+          description: Override compute type (e.g., int8, float16)
+        - in: query
+          name: use_diarization
+          schema:
+            type: boolean
+          description: Override speaker diarization setting
+        - in: header
+          name: X-HuggingFace-Token
+          schema:
+            type: string
+          description: Override HuggingFace token
+      responses:
+        '200':
+          description: Transcription task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptionQueued'
+        '400':
+          description: Processing task not completed or missing converted audio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Processing task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error starting transcription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/transcribe/{task_id}:
+    get:
+      summary: Get transcription status/result
+      operationId: getTranscription
+      tags:
+        - transcription
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transcription status or final result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptionStatus'
+        '404':
+          description: Transcription task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/generate-notes/{task_id}:
+    post:
+      summary: Generate meeting notes from a completed transcription
+      operationId: generateNotes
+      tags:
+        - meeting-notes
+      parameters:
+        - in: path
+          name: task_id
+          required: true
+          schema:
+            type: string
+          description: Transcription task ID (must be completed)
+        - in: query
+          name: template
+          schema:
+            type: string
+          description: Optional custom template for note generation
+        - in: query
+          name: ollama_model
+          schema:
+            type: string
+            example: llama2
+          description: Override Ollama model
+        - in: query
+          name: ollama_base_url
+          schema:
+            type: string
+            example: http://localhost:11434
+          description: Override Ollama base URL
+      responses:
+        '200':
+          description: Meeting notes generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateNotesResponse'
+        '400':
+          description: Transcription not completed or invalid transcript
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Transcription task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Ollama service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error generating notes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ollama/status:
+    get:
+      summary: Check Ollama availability and models
+      operationId: getOllamaStatus
+      tags:
+        - meeting-notes
+      responses:
+        '200':
+          description: Ollama service status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OllamaStatus'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: Meeting Transcriber API
+        version:
+          type: string
+          example: "0.1.0"
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      additionalProperties: false
+
+    AudioFileInfo:
+      type: object
+      properties:
+        original_format:
+          type: string
+          example: mp3
+        file_size_bytes:
+          type: integer
+        file_size_mb:
+          type: number
+          format: float
+        supported:
+          type: boolean
+        duration_seconds:
+          type: number
+        bit_rate:
+          type: integer
+        format_name:
+          type: string
+        codec:
+          type: string
+        sample_rate:
+          type: integer
+        channels:
+          type: integer
+
+    AudioProcessingQueued:
+      type: object
+      properties:
+        processing_task_id:
+          type: string
+        status:
+          type: string
+          example: analyzing
+        message:
+          type: string
+      required:
+        - processing_task_id
+        - status
+
+    AudioProcessingStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [analyzing, converting, completed, error]
+        created_at:
+          type: string
+          format: date-time
+        file_info:
+          $ref: '#/components/schemas/AudioFileInfo'
+        completed_at:
+          type: string
+          format: date-time
+        converted_file:
+          type: string
+          description: Path to converted audio file (server-local)
+        error:
+          type: string
+
+    TranscriptionQueued:
+      type: object
+      properties:
+        transcription_task_id:
+          type: string
+        status:
+          type: string
+          example: processing
+        processing_task_id:
+          type: string
+        config_overrides:
+          type: object
+          additionalProperties: true
+        audio_file_info:
+          $ref: '#/components/schemas/AudioFileInfo'
+      required:
+        - transcription_task_id
+        - status
+        - processing_task_id
+
+    TranscriptSegment:
+      type: object
+      properties:
+        start:
+          type: number
+          example: 0.42
+        end:
+          type: number
+          example: 3.14
+        text:
+          type: string
+        speaker:
+          type: string
+          example: SPEAKER_00
+
+    TranscriptionResult:
+      type: object
+      properties:
+        text:
+          type: string
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptSegment'
+        language:
+          type: string
+          example: en
+        language_probability:
+          type: number
+          format: float
+
+    TranscriptionStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          enum: [processing, completed, error]
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        result:
+          $ref: '#/components/schemas/TranscriptionResult'
+        error:
+          type: string
+
+    MeetingNotesResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [completed, error]
+        notes:
+          type: string
+          description: Generated meeting notes (markdown/plain text)
+        generated_at:
+          type: string
+          format: date-time
+        model_used:
+          type: string
+        base_url_used:
+          type: string
+        transcript_length:
+          type: integer
+        error:
+          type: string
+
+    GenerateNotesResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+        transcription_created_at:
+          type: string
+          format: date-time
+        notes_result:
+          $ref: '#/components/schemas/MeetingNotesResult'
+
+    OllamaStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: available
+        base_url:
+          type: string
+        configured_model:
+          type: string
+        available_models:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+              description: "Some responses may return 'unable to fetch'"
+
+    OllamaStatusErrorEnvelope:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        error:
+          type: string
