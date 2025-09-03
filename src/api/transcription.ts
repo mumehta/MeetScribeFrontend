@@ -23,7 +23,15 @@ export type TranscriptionQueued = {
 export type TranscriptionStatus = {
   task_id: string
   status: 'processing' | 'completed' | 'error'
-  result?: { text?: string }
+  result?: {
+    text?: string
+    segments?: {
+      start?: number
+      end?: number
+      text?: string
+      speaker?: string
+    }[]
+  }
   error?: string
 }
 
@@ -52,7 +60,8 @@ export function getAudioProcessingStatus(taskId: string) {
 
 export function startTranscription(processingTaskId: string) {
   logger.info('Transcription start', { processingTaskId })
-  return customFetcher<TranscriptionQueued>(`/api/v1/transcribe/${processingTaskId}`, {
+  const url = `/api/v1/transcribe/${processingTaskId}?use_diarization=true`
+  return customFetcher<TranscriptionQueued>(url, {
     method: 'POST',
   })
 }

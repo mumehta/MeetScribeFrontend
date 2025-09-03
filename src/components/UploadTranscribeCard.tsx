@@ -157,7 +157,27 @@ export default function UploadTranscribeCard() {
         { intervalMs: 1500 }
       )
       if (final.status === 'completed') {
-        const txt = final.result?.text || ''
+        // Prefer diarized segments if present; fallback to plain text
+        let txt: string = ''
+        const segs = final.result?.segments
+        if (Array.isArray(segs) && segs.length > 0) {
+          let out: string[] = []
+          let currSpeaker = (segs[0]?.speaker || 'SPEAKER_00').toString()
+          let buffer: string[] = []
+          for (const s of segs) {
+            const sp = (s.speaker || currSpeaker || 'SPEAKER').toString()
+            if (sp !== currSpeaker) {
+              if (buffer.length) out.push(`${currSpeaker}: ${buffer.join(' ').trim()}`)
+              currSpeaker = sp
+              buffer = []
+            }
+            if (s.text) buffer.push(s.text.trim())
+          }
+          if (buffer.length) out.push(`${currSpeaker}: ${buffer.join(' ').trim()}`)
+          txt = out.join('\n')
+        } else {
+          txt = final.result?.text || ''
+        }
         setTranscriptText(txt)
         setTranscriptCompleted(true)
         logger.info('Transcription completed', { length: txt.length })
