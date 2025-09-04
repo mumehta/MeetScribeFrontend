@@ -1,4 +1,4 @@
-import { AppBar, Toolbar, IconButton, Typography, Container, Paper, Tooltip } from '@mui/material'
+import { AppBar, Toolbar, IconButton, Typography, Container, Paper, Tooltip, FormControlLabel, Box, Radio, RadioGroup } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import LightModeIcon from '@mui/icons-material/LightMode'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
@@ -6,6 +6,7 @@ import { alpha, styled } from '@mui/material/styles'
 import UploadTranscribeCard from './components/UploadTranscribeCard'
 import ResultsPanel from './components/ResultsPanel'
 import { useAppStore } from './store/useAppStore'
+import RecordingControl from './components/RecordingControl'
 
 const Card = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -14,7 +15,7 @@ const Card = styled(Paper)(({ theme }) => ({
 
 export default function App() {
   const { sidebarOpen, setSidebarOpen } = useAppStore()
-  const { themeMode, toggleTheme } = useAppStore()
+  const { themeMode, toggleTheme, postRecordingAction, setPostRecordingAction } = useAppStore()
   
 
   return (
@@ -43,6 +44,8 @@ export default function App() {
           </IconButton>
           <Typography variant="h6" className="ml-2 flex-1">Meet Scribe</Typography>
           <div className="flex items-center gap-2">
+            {/* Recording control sits before the theme switcher */}
+            <RecordingControl />
             <Tooltip title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={toggleTheme} aria-label="toggle theme" size="large">
                 {themeMode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
@@ -52,7 +55,28 @@ export default function App() {
         </Toolbar>
       </AppBar>
 
-      <Container className="py-6">
+      <Container className="pt-0 pb-6">
+        {/* Preference below header controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mb: 0, mt: -0.5 }}>
+          <RadioGroup
+            row
+            value={postRecordingAction}
+            onChange={(e) => setPostRecordingAction((e.target as HTMLInputElement).value as any)}
+          >
+            <FormControlLabel
+              value="download"
+              control={<Radio size="small" color="primary" />}
+              label="Download Recording"
+              sx={{ '.MuiFormControlLabel-label': { fontSize: 12, color: 'text.secondary' }, mr: 1 }}
+            />
+            <FormControlLabel
+              value="auto-transcript"
+              control={<Radio size="small" color="primary" />}
+              label="Auto transcript"
+              sx={{ '.MuiFormControlLabel-label': { fontSize: 12, color: 'text.secondary' } }}
+            />
+          </RadioGroup>
+        </Box>
         <div className="grid gap-6">
           {/* Hero glass card */}
           <Card className="shadow-sm" sx={{

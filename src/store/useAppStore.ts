@@ -7,6 +7,8 @@ export interface AppState {
   setSidebarOpen: (sidebarOpen: boolean) => void
   recording: boolean
   setRecording: (recording: boolean) => void
+  postRecordingAction: 'auto-transcript' | 'download'
+  setPostRecordingAction: (v: 'auto-transcript' | 'download') => void
   themeMode: ThemeMode
   setThemeMode: (mode: ThemeMode) => void
   toggleTheme: () => void
@@ -35,6 +37,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   recording: false,
   setRecording: (recording) => set({ recording }),
+  postRecordingAction: 'auto-transcript',
+  setPostRecordingAction: (v) => set({ postRecordingAction: v }),
   themeMode: getInitialTheme(),
   setThemeMode: (mode) => {
     if (typeof window !== 'undefined') window.localStorage.setItem('themeMode', mode)
