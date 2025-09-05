@@ -58,6 +58,9 @@ export default function UploadTranscribeCard() {
     setTranscriptionTaskId,
     setTranscriptText,
     setNotesText,
+    transcriptionTaskId,
+    transcriptText,
+    resetUploadToken,
   } = useAppStore()
 
   const onPick = () => inputRef.current?.click()
@@ -108,6 +111,11 @@ export default function UploadTranscribeCard() {
     setStep('idle')
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  // Respond to global reset signals (e.g., when starting a new live recording)
+  useEffect(() => {
+    reset()
+  }, [resetUploadToken])
 
   // Auto-focus the Transcript button once a file is chosen
   useEffect(() => {
@@ -198,14 +206,15 @@ export default function UploadTranscribeCard() {
   }
 
   const startNotes = async () => {
-    if (!file || processing || !transcriptCompleted) return
+    const tId = useAppStore.getState().transcriptionTaskId
+    if (!tId || processing) return
     setStep('notes')
     setProcessing(true)
     const stop = simulateProgress()
     try {
       // Use latest transcription task id from store
       logger.info('Step: notes start')
-      const resp = await generateNotes(useAppStore.getState().transcriptionTaskId!)
+      const resp = await generateNotes(tId)
       const notes = resp?.notes_result?.notes
       if (resp?.notes_result?.status === 'completed' && notes) {
         setNotesText(notes)
@@ -292,7 +301,7 @@ export default function UploadTranscribeCard() {
             color="primary"
             startIcon={<CloudUploadIcon />}
             onClick={startNotes}
-            disabled={!file || processing || !transcriptCompleted}
+            disabled={processing || !transcriptionTaskId || !transcriptText}
           >
             Generate Meeting Notes
           </Button>

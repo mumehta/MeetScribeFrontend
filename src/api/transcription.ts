@@ -52,6 +52,21 @@ export async function uploadAudio(file: File) {
   return res
 }
 
+/**
+ * Register a server-local artifact path (e.g., from recordings) for processing without re-upload.
+ */
+export async function registerServerLocalPath(serverLocalPath: string, provenance?: { source?: string; recording_task_id?: string }) {
+  const payload: any = { server_local_path: serverLocalPath }
+  if (provenance) payload.provenance = provenance
+  logger.info('Register server-local audio', payload)
+  const res = await customFetcher<AudioProcessingQueued>('/api/v1/upload-audio', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  logger.info('Registration queued', res)
+  return res
+}
+
 export function getAudioProcessingStatus(taskId: string) {
   return customFetcher<AudioProcessingStatus>(`/api/v1/audio-processing/${taskId}`, {
     method: 'GET',

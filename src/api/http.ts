@@ -80,3 +80,21 @@ export async function customFetcher<T>(
     return text as unknown as T;
   }
 }
+
+export async function fetchBlob(
+  url: string,
+  options: FetchOptions = {},
+): Promise<Blob> {
+  const finalUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  const res = await fetch(finalUrl, options);
+  if (!res.ok) {
+    let detail: string;
+    try {
+      detail = await res.clone().text();
+    } catch {
+      detail = `HTTP ${res.status}`;
+    }
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  return await res.blob();
+}

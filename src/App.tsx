@@ -7,6 +7,7 @@ import UploadTranscribeCard from './components/UploadTranscribeCard'
 import ResultsPanel from './components/ResultsPanel'
 import { useAppStore } from './store/useAppStore'
 import RecordingControl from './components/RecordingControl'
+import PreflightCheck from './components/PreflightCheck'
 
 const Card = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -15,7 +16,7 @@ const Card = styled(Paper)(({ theme }) => ({
 
 export default function App() {
   const { sidebarOpen, setSidebarOpen } = useAppStore()
-  const { themeMode, toggleTheme, postRecordingAction, setPostRecordingAction } = useAppStore()
+  const { themeMode, toggleTheme, postRecordingAction, setPostRecordingAction, recording, stopping } = useAppStore()
   
 
   return (
@@ -44,7 +45,8 @@ export default function App() {
           </IconButton>
           <Typography variant="h6" className="ml-2 flex-1">Meet Scribe</Typography>
           <div className="flex items-center gap-2">
-            {/* Recording control sits before the theme switcher */}
+            {/* Preflight + Recording controls */}
+            <PreflightCheck />
             <RecordingControl />
             <Tooltip title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               <IconButton onClick={toggleTheme} aria-label="toggle theme" size="large">
@@ -65,13 +67,13 @@ export default function App() {
           >
             <FormControlLabel
               value="download"
-              control={<Radio size="small" color="primary" />}
+              control={<Radio size="small" color="primary" disabled={recording || stopping} />}
               label="Download Recording"
               sx={{ '.MuiFormControlLabel-label': { fontSize: 12, color: 'text.secondary' }, mr: 1 }}
             />
             <FormControlLabel
               value="auto-transcript"
-              control={<Radio size="small" color="primary" />}
+              control={<Radio size="small" color="primary" disabled={recording || stopping} />}
               label="Auto transcript"
               sx={{ '.MuiFormControlLabel-label': { fontSize: 12, color: 'text.secondary' } }}
             />

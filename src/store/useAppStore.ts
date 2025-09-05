@@ -7,6 +7,12 @@ export interface AppState {
   setSidebarOpen: (sidebarOpen: boolean) => void
   recording: boolean
   setRecording: (recording: boolean) => void
+  recordingReady: boolean
+  setRecordingReady: (v: boolean) => void
+  stopping: boolean
+  setStopping: (v: boolean) => void
+  recordingTaskId?: string
+  setRecordingTaskId: (id?: string) => void
   postRecordingAction: 'auto-transcript' | 'download'
   setPostRecordingAction: (v: 'auto-transcript' | 'download') => void
   themeMode: ThemeMode
@@ -21,6 +27,9 @@ export interface AppState {
   setTranscriptionTaskId: (id?: string) => void
   setTranscriptText: (t?: string) => void
   setNotesText: (t?: string) => void
+  // Cross-component reset signal for Upload & Transcribe UI
+  resetUploadToken: number
+  bumpResetUploadToken: () => void
 }
 
 function getInitialTheme(): ThemeMode {
@@ -37,6 +46,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   recording: false,
   setRecording: (recording) => set({ recording }),
+  recordingReady: false,
+  setRecordingReady: (recordingReady: boolean) => set({ recordingReady }),
+  stopping: false,
+  setStopping: (stopping: boolean) => set({ stopping }),
+  recordingTaskId: undefined,
+  setRecordingTaskId: (recordingTaskId?: string) => set({ recordingTaskId }),
   postRecordingAction: 'auto-transcript',
   setPostRecordingAction: (v) => set({ postRecordingAction: v }),
   themeMode: getInitialTheme(),
@@ -53,4 +68,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTranscriptionTaskId: (transcriptionTaskId) => set({ transcriptionTaskId }),
   setTranscriptText: (transcriptText) => set({ transcriptText }),
   setNotesText: (notesText) => set({ notesText }),
+  resetUploadToken: 0,
+  bumpResetUploadToken: () => set((s) => ({ resetUploadToken: (s.resetUploadToken || 0) + 1 })),
 }))
